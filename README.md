@@ -2,14 +2,14 @@
 
 Backend REST API for a small manufacturing workflow (products, materials, versioned bills of materials and transactional inventory), built **test-first** to show backend, QA automation and security practices end to end.
 
-![Java](https://img.shields.io/badge/Java-17-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen) ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue) ![Tests](https://img.shields.io/badge/tests-70%20JUnit-success) ![Testcontainers](https://img.shields.io/badge/Testcontainers-MySQL-informational)
+![Java](https://img.shields.io/badge/Java-17-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen) ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue) [![CI](https://github.com/JovanySk/qaflow-api/actions/workflows/ci.yml/badge.svg)](https://github.com/JovanySk/qaflow-api/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-65%20passing-success) ![Testcontainers](https://img.shields.io/badge/Testcontainers-MySQL-informational)
 
 ## Highlights
 
 | | |
 |---|---|
 | **24 REST endpoints** under `/api/v1` | auth, users, products, materials, BOM, inventory |
-| **70 automated tests** | 36 integration tests against real MySQL 8 (Testcontainers) + 34 unit/web tests (JUnit 5, Mockito, MockMvc) |
+| **65 automated tests, all green in CI** | 31 integration tests against real MySQL 8 (Testcontainers) + 34 unit/web tests (JUnit 5, Mockito, MockMvc) |
 | **98 designed test cases** | traceable to requirements in [`TEST_MATRIX.md`](TEST_MATRIX.md) |
 | **12 tables** | one Flyway migration, Hibernate in `validate` mode (never mutates the schema) |
 | **Security** | stateless JWT (HS256, 15 min), BCrypt, 3 roles, token invalidation via `authVersion` |
@@ -42,17 +42,7 @@ src/test/java
 └── *Test.java  → unit/web: services, domain rules, JWT validator, error handler
 ```
 
-| Suite | Tests |
-|---|---|
-| InventoryApiIT | 10 |
-| CatalogApiIT | 8 |
-| BomApiIT | 8 |
-| SecurityApiIT | 7 |
-| BackendInfrastructureIT | 3 |
-| Unit & web tests (11 classes) | 34 |
-| **Total** | **70** |
-
-The last full gate (through the BOM phase) ran **48/48 green** (26 unit/web + 22 integration). The inventory suites were added afterwards.
+Every push runs the full suite on GitHub Actions: **34 unit/web tests and 31 integration tests pass, with 0 failures**. Integration suites include InventoryApiIT, CatalogApiIT, BomApiIT, SecurityApiIT and BackendInfrastructureIT.
 
 Also included:
 - **Postman collection** with 12 requests ([`tests/postman`](tests/postman)). It uses an environment file with no secrets.

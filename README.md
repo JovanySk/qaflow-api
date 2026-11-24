@@ -48,6 +48,29 @@ Also included:
 - **Postman collection** with 12 requests ([`tests/postman`](tests/postman)). It uses an environment file with no secrets.
 - **SQL integrity checks** ([`tests/sql/inventory-validation.sql`](tests/sql/inventory-validation.sql), [`docs/database/phase-3-validation.sql`](docs/database/phase-3-validation.sql)).
 
+## Visual proof
+
+All images come from real runs: the API running locally against MySQL 8 in Docker, and the Surefire/Failsafe XML reports of `mvnw verify`.
+
+**Test report:** [`docs/test-report/index.html`](docs/test-report/index.html) is a static page generated from those reports by [`tools/test-report/generate_report.py`](tools/test-report/generate_report.py) (Python standard library only). CI builds the same page on every run and uploads it as the `test-report-html` artifact.
+
+| Test report summary | Suite detail |
+|---|---|
+| ![Test report summary: 65 tests, 65 passed, 0 failed](docs/screenshots/03-test-report.png) | ![BomApiIT suite expanded with per-test timings](docs/screenshots/04-test-report-suite.png) |
+
+| Swagger UI | BOM endpoint, authorized call |
+|---|---|
+| ![Swagger UI with all API groups](docs/screenshots/01-swagger.png) | ![GET current BOM returning 200 with exact decimal quantities](docs/screenshots/02-swagger-bom.png) |
+
+![GitHub Actions run summary: CI succeeded](docs/screenshots/05-ci.png)
+
+To regenerate the report after a local run:
+
+```powershell
+cd backend; .\mvnw.cmd clean verify; cd ..
+python tools/test-report/generate_report.py
+```
+
 ## Run it
 
 Requirements: JDK 17 and Docker (for MySQL and Testcontainers).

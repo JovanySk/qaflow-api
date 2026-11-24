@@ -1,0 +1,22 @@
+spring:
+  flyway:
+    clean-disabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+qaflow:
+  security:
+    jwt:
+      secret-base64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      issuer: qaflow-backend-test
+      audience: qaflow-web-test
+      expiration-seconds: 900
+  bootstrap:
+    enabled: false

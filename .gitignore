@@ -1,0 +1,46 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.jks
+*.p12
+*.pem
+*.key
+
+# Java and Maven
+**/target/
+*.class
+hs_err_pid*
+.mvn/timing.properties
+!.mvn/wrapper/maven-wrapper.properties
+
+# Node and frontend
+**/node_modules/
+frontend/dist/
+**/coverage/
+
+# Test outputs
+**/reports/
+tests/cypress/screenshots/
+tests/cypress/videos/
+tests/cypress/downloads/
+tests/locust/*.csv
+tests/locust/*.html
+
+# Runtime output
+*.log
+logs/
+
+# IDE and operating system
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local tooling
+.tooling/
+

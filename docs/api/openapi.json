@@ -1,0 +1,833 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "QAFlow Manufacturing Testing Portfolio API",
+    "version": "0.4.0-preliminary",
+    "description": "Contrato preliminar de diseño de la Fase 4. No representa todavía una API desplegada. IDs, versiones y cantidades se representan como strings para preservar precisión en clientes JavaScript."
+  },
+  "servers": [
+    { "url": "http://localhost:8080/api/v1", "description": "Backend local directo" },
+    { "url": "http://localhost/api/v1", "description": "Entrada prevista mediante proxy Docker" }
+  ],
+  "tags": [
+    { "name": "Authentication" },
+    { "name": "Users" },
+    { "name": "Products" },
+    { "name": "Materials" },
+    { "name": "BOM" },
+    { "name": "Inventory" },
+    { "name": "Production orders" },
+    { "name": "Quality" },
+    { "name": "Dashboard" },
+    { "name": "Audit" }
+  ],
+  "security": [
+    { "bearerAuth": [] }
+  ],
+  "paths": {
+    "/auth/login": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Autenticar usuario activo",
+        "operationId": "login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT emitido",
+            "headers": {
+              "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" },
+              "Cache-Control": { "schema": { "type": "string", "const": "no-store" } }
+            },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/auth/me": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Consultar perfil autenticado",
+        "operationId": "getCurrentUser",
+        "responses": {
+          "200": { "description": "Perfil actual", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CurrentUserResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/users": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Users"],
+        "summary": "Listar usuarios",
+        "description": "Solo ADMIN.",
+        "operationId": "listUsers",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" },
+          { "$ref": "#/components/parameters/Sort" }, { "$ref": "#/components/parameters/Search" },
+          { "name": "role", "in": "query", "schema": { "$ref": "#/components/schemas/Role" } },
+          { "name": "active", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Página de usuarios", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Crear usuario",
+        "description": "Solo ADMIN.",
+        "operationId": "createUser",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateUserRequest" } } } },
+        "responses": {
+          "201": { "description": "Usuario creado", "headers": { "Location": { "$ref": "#/components/headers/Location" }, "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/UserId" }],
+      "get": {
+        "tags": ["Users"], "summary": "Consultar usuario", "description": "Solo ADMIN.", "operationId": "getUser",
+        "responses": {
+          "200": { "description": "Usuario", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "patch": {
+        "tags": ["Users"], "summary": "Actualizar usuario", "description": "Solo ADMIN; conserva al menos un ADMIN activo.", "operationId": "updateUser",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateUserRequest" } } } },
+        "responses": {
+          "200": { "description": "Usuario actualizado", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/users/{userId}/password": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/UserId" }],
+      "patch": {
+        "tags": ["Users"], "summary": "Cambiar contraseña", "description": "Solo ADMIN; invalida tokens anteriores.", "operationId": "changeUserPassword",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" } } } },
+        "responses": {
+          "204": { "description": "Contraseña cambiada", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } } }, "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/products": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Products"], "summary": "Listar productos", "description": "ADMIN y OPERATOR.", "operationId": "listProducts",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" },
+          { "$ref": "#/components/parameters/Sort" }, { "$ref": "#/components/parameters/Search" },
+          { "name": "active", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Página de productos", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Products"], "summary": "Crear producto", "description": "Solo ADMIN.", "operationId": "createProduct",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateProductRequest" } } } },
+        "responses": {
+          "201": { "description": "Producto creado", "headers": { "Location": { "$ref": "#/components/headers/Location" }, "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/products/{productId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/ProductId" }],
+      "get": {
+        "tags": ["Products"], "summary": "Consultar producto", "description": "ADMIN y OPERATOR.", "operationId": "getProduct",
+        "responses": {
+          "200": { "description": "Producto", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "patch": {
+        "tags": ["Products"], "summary": "Actualizar o desactivar producto", "description": "Solo ADMIN.", "operationId": "updateProduct",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateProductRequest" } } } },
+        "responses": {
+          "200": { "description": "Producto actualizado", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/materials": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Materials"], "summary": "Listar materiales", "description": "ADMIN y OPERATOR.", "operationId": "listMaterials",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" },
+          { "$ref": "#/components/parameters/Sort" }, { "$ref": "#/components/parameters/Search" },
+          { "name": "active", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "unitOfMeasure", "in": "query", "schema": { "$ref": "#/components/schemas/UnitOfMeasure" } }
+        ],
+        "responses": {
+          "200": { "description": "Página de materiales", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MaterialPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Materials"], "summary": "Crear material", "description": "Solo ADMIN; crea balance inicial cero.", "operationId": "createMaterial",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateMaterialRequest" } } } },
+        "responses": {
+          "201": { "description": "Material creado", "headers": { "Location": { "$ref": "#/components/headers/Location" }, "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MaterialResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/materials/{materialId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/MaterialId" }],
+      "get": {
+        "tags": ["Materials"], "summary": "Consultar material", "description": "ADMIN y OPERATOR.", "operationId": "getMaterial",
+        "responses": {
+          "200": { "description": "Material", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MaterialResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "patch": {
+        "tags": ["Materials"], "summary": "Actualizar o desactivar material", "description": "Solo ADMIN; el cambio de unidad puede entrar en conflicto con historia.", "operationId": "updateMaterial",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateMaterialRequest" } } } },
+        "responses": {
+          "200": { "description": "Material actualizado", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MaterialResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/products/{productId}/boms": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/ProductId" }],
+      "get": {
+        "tags": ["BOM"], "summary": "Listar revisiones de BOM", "description": "ADMIN y OPERATOR.", "operationId": "listBomRevisions",
+        "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" }, { "$ref": "#/components/parameters/Sort" }],
+        "responses": {
+          "200": { "description": "Página de revisiones", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BomSummaryPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["BOM"], "summary": "Publicar una nueva revisión de BOM", "description": "Solo ADMIN; reemplaza la revisión vigente en una transacción.", "operationId": "publishBomRevision",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PublishBomRequest" } } } },
+        "responses": {
+          "201": { "description": "Revisión publicada", "headers": { "Location": { "$ref": "#/components/headers/Location" }, "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BomResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/products/{productId}/boms/current": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/ProductId" }],
+      "get": {
+        "tags": ["BOM"], "summary": "Consultar BOM vigente", "description": "ADMIN y OPERATOR.", "operationId": "getCurrentBom",
+        "responses": {
+          "200": { "description": "BOM vigente", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BomResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/products/{productId}/boms/{revisionNumber}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/ProductId" },
+        { "name": "revisionNumber", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }
+      ],
+      "get": {
+        "tags": ["BOM"], "summary": "Consultar revisión histórica de BOM", "description": "ADMIN y OPERATOR.", "operationId": "getBomRevision",
+        "responses": {
+          "200": { "description": "Revisión de BOM", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BomResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/inventory/balances": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Inventory"], "summary": "Listar saldos de inventario", "description": "ADMIN y OPERATOR.", "operationId": "listInventoryBalances",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" }, { "$ref": "#/components/parameters/Sort" }, { "$ref": "#/components/parameters/Search" },
+          { "name": "active", "in": "query", "schema": { "type": "boolean" } }, { "name": "outOfStock", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Página de saldos", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryBalancePage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/inventory/balances/{materialId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/MaterialId" }],
+      "get": {
+        "tags": ["Inventory"], "summary": "Consultar saldo de un material", "description": "ADMIN y OPERATOR.", "operationId": "getInventoryBalance",
+        "responses": {
+          "200": { "description": "Saldo", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryBalanceResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/inventory/movements": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Inventory"], "summary": "Listar movimientos de inventario", "description": "ADMIN y OPERATOR.", "operationId": "listInventoryMovements",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" }, { "$ref": "#/components/parameters/Sort" },
+          { "name": "materialId", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "name": "type", "in": "query", "schema": { "$ref": "#/components/schemas/InventoryMovementType" } },
+          { "name": "productionOrderId", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "name": "performedBy", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "$ref": "#/components/parameters/From" }, { "$ref": "#/components/parameters/To" }
+        ],
+        "responses": {
+          "200": { "description": "Página de movimientos", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryMovementPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Inventory"], "summary": "Registrar movimiento manual", "description": "Solo OPERATOR; nunca acepta PRODUCTION_CONSUMPTION.", "operationId": "createInventoryMovement",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateInventoryMovementRequest" } } } },
+        "responses": {
+          "201": { "description": "Movimiento creado", "headers": { "Location": { "$ref": "#/components/headers/Location" }, "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryMovementResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/inventory/movements/{movementId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/MovementId" }],
+      "get": {
+        "tags": ["Inventory"], "summary": "Consultar movimiento", "description": "ADMIN y OPERATOR.", "operationId": "getInventoryMovement",
+        "responses": {
+          "200": { "description": "Movimiento", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InventoryMovementResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/production-orders": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Production orders"], "summary": "Listar órdenes", "description": "ADMIN y OPERATOR ven todas; QUALITY_INSPECTOR solo COMPLETED.", "operationId": "listProductionOrders",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" }, { "$ref": "#/components/parameters/Sort" }, { "$ref": "#/components/parameters/Search" },
+          { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/ProductionOrderStatus" } },
+          { "name": "productId", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "name": "inspectionStatus", "in": "query", "schema": { "$ref": "#/components/schemas/InspectionStatus" } },
+          { "$ref": "#/components/parameters/From" }, { "$ref": "#/components/parameters/To" }
+        ],
+        "responses": {
+          "200": { "description": "Página de órdenes", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductionOrderPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Production orders"], "summary": "Crear orden DRAFT", "description": "Solo OPERATOR; el servidor genera orderNumber.", "operationId": "createProductionOrder",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateProductionOrderRequest" } } } },
+        "responses": {
+          "201": { "description": "Orden creada", "headers": { "Location": { "$ref": "#/components/headers/Location" }, "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductionOrderResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/production-orders/{orderId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/OrderId" }],
+      "get": {
+        "tags": ["Production orders"], "summary": "Consultar orden", "description": "Inspector solo si COMPLETED.", "operationId": "getProductionOrder",
+        "responses": {
+          "200": { "description": "Orden", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductionOrderResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "patch": {
+        "tags": ["Production orders"], "summary": "Actualizar orden DRAFT", "description": "Solo OPERATOR y únicamente producto/cantidad.", "operationId": "updateDraftProductionOrder",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateProductionOrderRequest" } } } },
+        "responses": {
+          "200": { "description": "Orden actualizada", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductionOrderResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/production-orders/{orderId}/history": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/OrderId" }],
+      "get": {
+        "tags": ["Production orders"], "summary": "Consultar historial de estados", "description": "Mismo alcance que el detalle de la orden.", "operationId": "getProductionOrderHistory",
+        "responses": {
+          "200": { "description": "Historial ordenado por secuencia", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/OrderStatusHistoryResponse" } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/production-orders/{orderId}/confirm": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/OrderId" }],
+      "post": {
+        "tags": ["Production orders"], "summary": "Confirmar y reservar", "description": "Solo OPERATOR; DRAFT a CONFIRMED.", "operationId": "confirmProductionOrder",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderActionRequest" } } } },
+        "responses": { "200": { "$ref": "#/components/responses/OrderActionSuccess" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/production-orders/{orderId}/start": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/OrderId" }],
+      "post": {
+        "tags": ["Production orders"], "summary": "Iniciar orden", "description": "Solo OPERATOR; CONFIRMED a IN_PROGRESS.", "operationId": "startProductionOrder",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderActionRequest" } } } },
+        "responses": { "200": { "$ref": "#/components/responses/OrderActionSuccess" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/production-orders/{orderId}/complete": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/OrderId" }],
+      "post": {
+        "tags": ["Production orders"], "summary": "Completar y consumir", "description": "Solo OPERATOR; IN_PROGRESS a COMPLETED de forma atómica.", "operationId": "completeProductionOrder",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderActionRequest" } } } },
+        "responses": { "200": { "$ref": "#/components/responses/OrderActionSuccess" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/production-orders/{orderId}/cancel": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/OrderId" }],
+      "post": {
+        "tags": ["Production orders"], "summary": "Cancelar y liberar reserva", "description": "Solo OPERATOR; reason obligatoria.", "operationId": "cancelProductionOrder",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CancelOrderRequest" } } } },
+        "responses": { "200": { "$ref": "#/components/responses/OrderActionSuccess" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" } }
+      }
+    },
+    "/quality-inspections": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Quality"], "summary": "Listar inspecciones", "description": "ADMIN y QUALITY_INSPECTOR.", "operationId": "listQualityInspections",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" }, { "$ref": "#/components/parameters/Sort" },
+          { "name": "result", "in": "query", "schema": { "$ref": "#/components/schemas/QualityResult" } },
+          { "name": "productionOrderId", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "name": "productId", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "name": "inspectedBy", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "$ref": "#/components/parameters/From" }, { "$ref": "#/components/parameters/To" }
+        ],
+        "responses": {
+          "200": { "description": "Página de inspecciones", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/QualityInspectionPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["Quality"], "summary": "Registrar inspección final", "description": "Solo QUALITY_INSPECTOR; una por orden COMPLETED.", "operationId": "createQualityInspection",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateInspectionRequest" } } } },
+        "responses": {
+          "201": { "description": "Inspección creada", "headers": { "Location": { "$ref": "#/components/headers/Location" }, "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/QualityInspectionResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/quality-inspections/{inspectionId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/InspectionId" }],
+      "get": {
+        "tags": ["Quality"], "summary": "Consultar inspección", "description": "ADMIN y QUALITY_INSPECTOR.", "operationId": "getQualityInspection",
+        "responses": {
+          "200": { "description": "Inspección", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/QualityInspectionResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/dashboard": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Dashboard"], "summary": "Consultar dashboard por rol", "description": "El servidor elige la vista a partir del rol autenticado.", "operationId": "getDashboard",
+        "responses": {
+          "200": { "description": "Dashboard de ADMIN, OPERATOR o QUALITY_INSPECTOR", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DashboardResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/audit-events": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }],
+      "get": {
+        "tags": ["Audit"], "summary": "Listar eventos de auditoría", "description": "Solo ADMIN.", "operationId": "listAuditEvents",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/Size" }, { "$ref": "#/components/parameters/Sort" },
+          { "name": "actorUserId", "in": "query", "schema": { "$ref": "#/components/schemas/Id" } },
+          { "name": "action", "in": "query", "schema": { "type": "string", "maxLength": 64 } },
+          { "name": "resourceType", "in": "query", "schema": { "type": "string", "maxLength": 64 } },
+          { "name": "resourceId", "in": "query", "schema": { "type": "string", "maxLength": 64 } },
+          { "name": "outcome", "in": "query", "schema": { "$ref": "#/components/schemas/AuditOutcome" } },
+          { "name": "correlationId", "in": "query", "schema": { "type": "string", "maxLength": 64 } },
+          { "$ref": "#/components/parameters/From" }, { "$ref": "#/components/parameters/To" }
+        ],
+        "responses": {
+          "200": { "description": "Página de auditoría", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuditEventPage" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/audit-events/{auditEventId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CorrelationId" }, { "$ref": "#/components/parameters/AuditEventId" }],
+      "get": {
+        "tags": ["Audit"], "summary": "Consultar evento de auditoría", "description": "Solo ADMIN.", "operationId": "getAuditEvent",
+        "responses": {
+          "200": { "description": "Evento de auditoría", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuditEventResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "JWT HS256 de 15 minutos." }
+    },
+    "headers": {
+      "CorrelationId": { "description": "Identificador de correlación de la petición.", "schema": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" } },
+      "Location": { "description": "URI relativa del recurso creado.", "schema": { "type": "string" } }
+    },
+    "parameters": {
+      "CorrelationId": { "name": "X-Correlation-Id", "in": "header", "required": false, "schema": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" } },
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 0, "default": 0 } },
+      "Size": { "name": "size", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+      "Sort": { "name": "sort", "in": "query", "description": "Campo permitido y dirección, por ejemplo createdAt,desc.", "schema": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*,(asc|desc)$" } },
+      "Search": { "name": "search", "in": "query", "schema": { "type": "string", "maxLength": 100 } },
+      "From": { "name": "from", "in": "query", "description": "Límite inclusivo UTC.", "schema": { "type": "string", "format": "date-time" } },
+      "To": { "name": "to", "in": "query", "description": "Límite exclusivo UTC.", "schema": { "type": "string", "format": "date-time" } },
+      "UserId": { "name": "userId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/Id" } },
+      "ProductId": { "name": "productId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/Id" } },
+      "MaterialId": { "name": "materialId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/Id" } },
+      "MovementId": { "name": "movementId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/Id" } },
+      "OrderId": { "name": "orderId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/Id" } },
+      "InspectionId": { "name": "inspectionId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/Id" } },
+      "AuditEventId": { "name": "auditEventId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/Id" } }
+    },
+    "responses": {
+      "BadRequest": { "description": "Solicitud inválida", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "Unauthorized": { "description": "Credenciales/token ausentes o inválidos", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" }, "WWW-Authenticate": { "schema": { "type": "string", "examples": ["Bearer"] } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "Forbidden": { "description": "Rol o alcance no permitido", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "NotFound": { "description": "Recurso inexistente", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "Conflict": { "description": "Conflicto de negocio o concurrencia", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "InternalError": { "description": "Error inesperado sanitizado", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "OrderActionSuccess": { "description": "Transición aplicada", "headers": { "X-Correlation-Id": { "$ref": "#/components/headers/CorrelationId" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductionOrderResponse" } } } }
+    },
+    "schemas": {
+      "Id": { "type": "string", "pattern": "^[1-9][0-9]*$", "examples": ["42"] },
+      "Version": { "type": "string", "pattern": "^[0-9]+$", "examples": ["0"] },
+      "PositiveQuantity": { "type": "string", "pattern": "^(?!0+(?:\\.0+)?$)[0-9]{1,13}(?:\\.[0-9]{1,6})?$", "examples": ["10.000000"] },
+      "NonNegativeQuantity": { "type": "string", "pattern": "^[0-9]{1,13}(?:\\.[0-9]{1,6})?$", "examples": ["0.000000"] },
+      "Role": { "type": "string", "enum": ["ADMIN", "OPERATOR", "QUALITY_INSPECTOR"] },
+      "UnitOfMeasure": { "type": "string", "enum": ["PIECE", "KILOGRAM", "GRAM", "LITER", "MILLILITER", "METER", "CENTIMETER"] },
+      "ProductionOrderStatus": { "type": "string", "enum": ["DRAFT", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] },
+      "QualityResult": { "type": "string", "enum": ["APPROVED", "REJECTED"] },
+      "InspectionStatus": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+      "InventoryMovementType": { "type": "string", "enum": ["ENTRY", "MANUAL_OUT", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "PRODUCTION_CONSUMPTION"] },
+      "ManualInventoryMovementType": { "type": "string", "enum": ["ENTRY", "MANUAL_OUT", "ADJUSTMENT_IN", "ADJUSTMENT_OUT"] },
+      "InventoryDirection": { "type": "string", "enum": ["IN", "OUT"] },
+      "AuditOutcome": { "type": "string", "enum": ["SUCCESS", "REJECTED", "FAILURE"] },
+      "ActorSummary": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "username", "displayName", "role"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" }, "username": { "type": "string", "maxLength": 100 },
+          "displayName": { "type": "string", "maxLength": 150 }, "role": { "$ref": "#/components/schemas/Role" }
+        }
+      },
+      "PageMetadata": {
+        "type": "object", "additionalProperties": false,
+        "required": ["number", "size", "totalElements", "totalPages", "first", "last"],
+        "properties": {
+          "number": { "type": "integer", "minimum": 0 }, "size": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "totalElements": { "type": "integer", "minimum": 0 }, "totalPages": { "type": "integer", "minimum": 0 },
+          "first": { "type": "boolean" }, "last": { "type": "boolean" }
+        }
+      },
+      "FieldError": {
+        "type": "object", "additionalProperties": false, "required": ["field", "code", "message"],
+        "properties": { "field": { "type": "string" }, "code": { "type": "string" }, "message": { "type": "string" } }
+      },
+      "ErrorResponse": {
+        "type": "object", "additionalProperties": false,
+        "required": ["timestamp", "status", "error", "code", "message", "path", "correlationId", "fieldErrors"],
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" }, "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+          "error": { "type": "string" }, "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "message": { "type": "string" }, "path": { "type": "string" },
+          "correlationId": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" },
+          "fieldErrors": { "type": "array", "items": { "$ref": "#/components/schemas/FieldError" } }
+        },
+        "examples": [{ "timestamp": "2026-07-19T15:32:11Z", "status": 409, "error": "Conflict", "code": "INSUFFICIENT_STOCK", "message": "No hay stock disponible suficiente para confirmar la orden.", "path": "/api/v1/production-orders/42/confirm", "correlationId": "qa-demo-00042", "fieldErrors": [] }]
+      },
+      "LoginRequest": {
+        "type": "object", "additionalProperties": false, "required": ["username", "password"],
+        "properties": { "username": { "type": "string", "minLength": 3, "maxLength": 100 }, "password": { "type": "string", "minLength": 8, "maxLength": 128, "writeOnly": true } },
+        "examples": [{ "username": "operator.demo", "password": "Demo123!" }]
+      },
+      "LoginResponse": {
+        "type": "object", "additionalProperties": false, "required": ["accessToken", "tokenType", "expiresInSeconds", "user"],
+        "properties": {
+          "accessToken": { "type": "string", "readOnly": true }, "tokenType": { "type": "string", "const": "BEARER" },
+          "expiresInSeconds": { "type": "integer", "const": 900 }, "user": { "$ref": "#/components/schemas/ActorSummary" }
+        }
+      },
+      "CurrentUserResponse": { "type": "object", "additionalProperties": false, "required": ["user"], "properties": { "user": { "$ref": "#/components/schemas/ActorSummary" } } },
+      "CreateUserRequest": {
+        "type": "object", "additionalProperties": false, "required": ["username", "displayName", "password", "role"],
+        "properties": {
+          "username": { "type": "string", "minLength": 3, "maxLength": 100 }, "displayName": { "type": "string", "minLength": 1, "maxLength": 150 },
+          "password": { "type": "string", "minLength": 8, "maxLength": 128, "writeOnly": true }, "role": { "$ref": "#/components/schemas/Role" },
+          "active": { "type": "boolean", "default": true }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object", "additionalProperties": false, "required": ["version"], "minProperties": 2,
+        "properties": { "version": { "$ref": "#/components/schemas/Version" }, "displayName": { "type": "string", "minLength": 1, "maxLength": 150 }, "role": { "$ref": "#/components/schemas/Role" }, "active": { "type": "boolean" } }
+      },
+      "ChangePasswordRequest": {
+        "type": "object", "additionalProperties": false, "required": ["version", "newPassword"],
+        "properties": { "version": { "$ref": "#/components/schemas/Version" }, "newPassword": { "type": "string", "minLength": 8, "maxLength": 128, "writeOnly": true } }
+      },
+      "UserResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "username", "displayName", "role", "active", "version", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" }, "username": { "type": "string" }, "displayName": { "type": "string" },
+          "role": { "$ref": "#/components/schemas/Role" }, "active": { "type": "boolean" }, "version": { "$ref": "#/components/schemas/Version" },
+          "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/UserResponse" } } } }] },
+      "ProductSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "sku", "name"],
+        "properties": { "id": { "$ref": "#/components/schemas/Id" }, "sku": { "type": "string" }, "name": { "type": "string" } }
+      },
+      "CreateProductRequest": {
+        "type": "object", "additionalProperties": false, "required": ["sku", "name"],
+        "properties": { "sku": { "type": "string", "minLength": 1, "maxLength": 64 }, "name": { "type": "string", "minLength": 1, "maxLength": 150 }, "description": { "type": ["string", "null"], "maxLength": 500 }, "active": { "type": "boolean", "default": true } }
+      },
+      "UpdateProductRequest": {
+        "type": "object", "additionalProperties": false, "required": ["version"], "minProperties": 2,
+        "properties": { "version": { "$ref": "#/components/schemas/Version" }, "sku": { "type": "string", "minLength": 1, "maxLength": 64 }, "name": { "type": "string", "minLength": 1, "maxLength": 150 }, "description": { "type": ["string", "null"], "maxLength": 500 }, "active": { "type": "boolean" } }
+      },
+      "ProductResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "sku", "name", "description", "active", "version", "createdAt", "createdBy", "updatedAt", "updatedBy"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" }, "sku": { "type": "string" }, "name": { "type": "string" }, "description": { "type": ["string", "null"] },
+          "active": { "type": "boolean" }, "version": { "$ref": "#/components/schemas/Version" }, "createdAt": { "type": "string", "format": "date-time" },
+          "createdBy": { "$ref": "#/components/schemas/ActorSummary" }, "updatedAt": { "type": "string", "format": "date-time" }, "updatedBy": { "$ref": "#/components/schemas/ActorSummary" }
+        }
+      },
+      "ProductPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/ProductResponse" } } } }] },
+      "MaterialSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "code", "name", "unitOfMeasure"],
+        "properties": { "id": { "$ref": "#/components/schemas/Id" }, "code": { "type": "string" }, "name": { "type": "string" }, "unitOfMeasure": { "$ref": "#/components/schemas/UnitOfMeasure" } }
+      },
+      "CreateMaterialRequest": {
+        "type": "object", "additionalProperties": false, "required": ["code", "name", "unitOfMeasure"],
+        "properties": { "code": { "type": "string", "minLength": 1, "maxLength": 64 }, "name": { "type": "string", "minLength": 1, "maxLength": 150 }, "description": { "type": ["string", "null"], "maxLength": 500 }, "unitOfMeasure": { "$ref": "#/components/schemas/UnitOfMeasure" }, "active": { "type": "boolean", "default": true } }
+      },
+      "UpdateMaterialRequest": {
+        "type": "object", "additionalProperties": false, "required": ["version"], "minProperties": 2,
+        "properties": { "version": { "$ref": "#/components/schemas/Version" }, "code": { "type": "string", "minLength": 1, "maxLength": 64 }, "name": { "type": "string", "minLength": 1, "maxLength": 150 }, "description": { "type": ["string", "null"], "maxLength": 500 }, "unitOfMeasure": { "$ref": "#/components/schemas/UnitOfMeasure" }, "active": { "type": "boolean" } }
+      },
+      "MaterialResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "code", "name", "description", "unitOfMeasure", "active", "version", "createdAt", "createdBy", "updatedAt", "updatedBy"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" }, "code": { "type": "string" }, "name": { "type": "string" }, "description": { "type": ["string", "null"] },
+          "unitOfMeasure": { "$ref": "#/components/schemas/UnitOfMeasure" }, "active": { "type": "boolean" }, "version": { "$ref": "#/components/schemas/Version" },
+          "createdAt": { "type": "string", "format": "date-time" }, "createdBy": { "$ref": "#/components/schemas/ActorSummary" },
+          "updatedAt": { "type": "string", "format": "date-time" }, "updatedBy": { "$ref": "#/components/schemas/ActorSummary" }
+        }
+      },
+      "MaterialPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/MaterialResponse" } } } }] },
+      "BomItemRequest": {
+        "type": "object", "additionalProperties": false, "required": ["materialId", "quantityPerUnit"],
+        "properties": { "materialId": { "$ref": "#/components/schemas/Id" }, "quantityPerUnit": { "$ref": "#/components/schemas/PositiveQuantity" } }
+      },
+      "PublishBomRequest": {
+        "type": "object", "additionalProperties": false, "required": ["items"],
+        "properties": { "items": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/components/schemas/BomItemRequest" }, "description": "materialId debe ser único; la validación cruzada se realiza en servicio." } }
+      },
+      "BomItemResponse": {
+        "type": "object", "additionalProperties": false, "required": ["materialId", "materialCode", "materialName", "unitOfMeasure", "quantityPerUnit"],
+        "properties": { "materialId": { "$ref": "#/components/schemas/Id" }, "materialCode": { "type": "string" }, "materialName": { "type": "string" }, "unitOfMeasure": { "$ref": "#/components/schemas/UnitOfMeasure" }, "quantityPerUnit": { "$ref": "#/components/schemas/PositiveQuantity" } }
+      },
+      "BomSummaryResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "revisionNumber", "current", "itemCount", "createdAt", "createdBy"],
+        "properties": { "id": { "$ref": "#/components/schemas/Id" }, "revisionNumber": { "type": "integer", "minimum": 1 }, "current": { "type": "boolean" }, "itemCount": { "type": "integer", "minimum": 1 }, "createdAt": { "type": "string", "format": "date-time" }, "createdBy": { "$ref": "#/components/schemas/ActorSummary" } }
+      },
+      "BomResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "product", "revisionNumber", "current", "items", "createdAt", "createdBy", "supersededAt", "supersededBy"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" }, "product": { "$ref": "#/components/schemas/ProductSummary" }, "revisionNumber": { "type": "integer", "minimum": 1 },
+          "current": { "type": "boolean" }, "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/BomItemResponse" } },
+          "createdAt": { "type": "string", "format": "date-time" }, "createdBy": { "$ref": "#/components/schemas/ActorSummary" },
+          "supersededAt": { "type": ["string", "null"], "format": "date-time" }, "supersededBy": { "oneOf": [{ "$ref": "#/components/schemas/ActorSummary" }, { "type": "null" }] }
+        }
+      },
+      "BomSummaryPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/BomSummaryResponse" } } } }] },
+      "InventoryBalanceResponse": {
+        "type": "object", "additionalProperties": false, "required": ["material", "onHandQuantity", "reservedQuantity", "availableQuantity", "version", "updatedAt", "updatedBy"],
+        "properties": { "material": { "$ref": "#/components/schemas/MaterialSummary" }, "onHandQuantity": { "$ref": "#/components/schemas/NonNegativeQuantity" }, "reservedQuantity": { "$ref": "#/components/schemas/NonNegativeQuantity" }, "availableQuantity": { "$ref": "#/components/schemas/NonNegativeQuantity" }, "version": { "$ref": "#/components/schemas/Version" }, "updatedAt": { "type": "string", "format": "date-time" }, "updatedBy": { "$ref": "#/components/schemas/ActorSummary" } }
+      },
+      "InventoryBalancePage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/InventoryBalanceResponse" } } } }] },
+      "CreateInventoryMovementRequest": {
+        "type": "object", "additionalProperties": false, "required": ["materialId", "type", "quantity"],
+        "anyOf": [{ "required": ["referenceCode"] }, { "required": ["reason"] }],
+        "properties": { "materialId": { "$ref": "#/components/schemas/Id" }, "type": { "$ref": "#/components/schemas/ManualInventoryMovementType" }, "quantity": { "$ref": "#/components/schemas/PositiveQuantity" }, "referenceCode": { "type": "string", "minLength": 1, "maxLength": 120 }, "reason": { "type": "string", "minLength": 1, "maxLength": 500 } }
+      },
+      "InventoryMovementResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "material", "type", "direction", "quantity", "onHandAfter", "reservedAfter", "productionOrderId", "referenceCode", "reason", "performedBy", "occurredAt", "correlationId"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" }, "material": { "$ref": "#/components/schemas/MaterialSummary" }, "type": { "$ref": "#/components/schemas/InventoryMovementType" },
+          "direction": { "$ref": "#/components/schemas/InventoryDirection" }, "quantity": { "$ref": "#/components/schemas/PositiveQuantity" },
+          "onHandAfter": { "$ref": "#/components/schemas/NonNegativeQuantity" }, "reservedAfter": { "$ref": "#/components/schemas/NonNegativeQuantity" },
+          "productionOrderId": { "oneOf": [{ "$ref": "#/components/schemas/Id" }, { "type": "null" }] }, "referenceCode": { "type": ["string", "null"] },
+          "reason": { "type": ["string", "null"] }, "performedBy": { "$ref": "#/components/schemas/ActorSummary" }, "occurredAt": { "type": "string", "format": "date-time" },
+          "correlationId": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" }
+        }
+      },
+      "InventoryMovementPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/InventoryMovementResponse" } } } }] },
+      "CreateProductionOrderRequest": {
+        "type": "object", "additionalProperties": false, "required": ["productId", "quantity"],
+        "properties": { "productId": { "$ref": "#/components/schemas/Id" }, "quantity": { "$ref": "#/components/schemas/PositiveQuantity" } }
+      },
+      "UpdateProductionOrderRequest": {
+        "type": "object", "additionalProperties": false, "required": ["version"], "minProperties": 2,
+        "properties": { "version": { "$ref": "#/components/schemas/Version" }, "productId": { "$ref": "#/components/schemas/Id" }, "quantity": { "$ref": "#/components/schemas/PositiveQuantity" } }
+      },
+      "OrderActionRequest": {
+        "type": "object", "additionalProperties": false, "required": ["version"],
+        "properties": { "version": { "$ref": "#/components/schemas/Version" }, "reason": { "type": "string", "minLength": 1, "maxLength": 500 } }
+      },
+      "CancelOrderRequest": {
+        "type": "object", "additionalProperties": false, "required": ["version", "reason"],
+        "properties": { "version": { "$ref": "#/components/schemas/Version" }, "reason": { "type": "string", "minLength": 1, "maxLength": 500 } }
+      },
+      "BomReference": { "type": "object", "additionalProperties": false, "required": ["id", "revisionNumber"], "properties": { "id": { "$ref": "#/components/schemas/Id" }, "revisionNumber": { "type": "integer", "minimum": 1 } } },
+      "ProductionOrderMaterialResponse": {
+        "type": "object", "additionalProperties": false, "required": ["materialId", "materialCode", "materialName", "unitOfMeasure", "quantityPerUnit", "requiredQuantity", "activeReservedQuantity"],
+        "properties": { "materialId": { "$ref": "#/components/schemas/Id" }, "materialCode": { "type": "string" }, "materialName": { "type": "string" }, "unitOfMeasure": { "$ref": "#/components/schemas/UnitOfMeasure" }, "quantityPerUnit": { "$ref": "#/components/schemas/PositiveQuantity" }, "requiredQuantity": { "$ref": "#/components/schemas/PositiveQuantity" }, "activeReservedQuantity": { "$ref": "#/components/schemas/NonNegativeQuantity" } }
+      },
+      "ProductionOrderSummaryResponse": {
+        "type": "object", "required": ["id", "orderNumber", "product", "quantity", "status", "inspectionStatus", "version", "createdAt", "updatedAt"],
+        "properties": { "id": { "$ref": "#/components/schemas/Id" }, "orderNumber": { "type": "string", "maxLength": 40 }, "product": { "$ref": "#/components/schemas/ProductSummary" }, "quantity": { "$ref": "#/components/schemas/PositiveQuantity" }, "status": { "$ref": "#/components/schemas/ProductionOrderStatus" }, "inspectionStatus": { "$ref": "#/components/schemas/InspectionStatus" }, "version": { "$ref": "#/components/schemas/Version" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } }
+      },
+      "ProductionOrderResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ProductionOrderSummaryResponse" },
+          { "type": "object", "required": ["bom", "materials", "createdBy", "updatedBy", "availableActions"], "properties": {
+            "bom": { "oneOf": [{ "$ref": "#/components/schemas/BomReference" }, { "type": "null" }] },
+            "materials": { "type": "array", "items": { "$ref": "#/components/schemas/ProductionOrderMaterialResponse" } },
+            "createdBy": { "$ref": "#/components/schemas/ActorSummary" }, "updatedBy": { "$ref": "#/components/schemas/ActorSummary" },
+            "availableActions": { "type": "array", "items": { "type": "string", "enum": ["EDIT", "CONFIRM", "START", "COMPLETE", "CANCEL"] }, "uniqueItems": true }
+          } }
+        ]
+      },
+      "ProductionOrderPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/ProductionOrderSummaryResponse" } } } }] },
+      "OrderStatusHistoryResponse": {
+        "type": "object", "additionalProperties": false, "required": ["sequenceNumber", "fromStatus", "toStatus", "changedBy", "changedAt", "correlationId"],
+        "properties": { "sequenceNumber": { "type": "integer", "minimum": 1 }, "fromStatus": { "oneOf": [{ "$ref": "#/components/schemas/ProductionOrderStatus" }, { "type": "null" }] }, "toStatus": { "$ref": "#/components/schemas/ProductionOrderStatus" }, "changedBy": { "$ref": "#/components/schemas/ActorSummary" }, "changedAt": { "type": "string", "format": "date-time" }, "correlationId": { "type": "string" } }
+      },
+      "CreateApprovedInspectionRequest": {
+        "type": "object", "additionalProperties": false, "required": ["productionOrderId", "result"],
+        "properties": { "productionOrderId": { "$ref": "#/components/schemas/Id" }, "result": { "type": "string", "const": "APPROVED" }, "observations": { "type": ["string", "null"], "maxLength": 1000 } }
+      },
+      "CreateRejectedInspectionRequest": {
+        "type": "object", "additionalProperties": false, "required": ["productionOrderId", "result", "observations"],
+        "properties": { "productionOrderId": { "$ref": "#/components/schemas/Id" }, "result": { "type": "string", "const": "REJECTED" }, "observations": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+      },
+      "CreateInspectionRequest": { "oneOf": [{ "$ref": "#/components/schemas/CreateApprovedInspectionRequest" }, { "$ref": "#/components/schemas/CreateRejectedInspectionRequest" }], "discriminator": { "propertyName": "result" } },
+      "InspectionOrderSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "orderNumber", "product"],
+        "properties": { "id": { "$ref": "#/components/schemas/Id" }, "orderNumber": { "type": "string" }, "product": { "$ref": "#/components/schemas/ProductSummary" } }
+      },
+      "QualityInspectionResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "productionOrder", "result", "observations", "inspectedBy", "inspectedAt", "correlationId"],
+        "properties": { "id": { "$ref": "#/components/schemas/Id" }, "productionOrder": { "$ref": "#/components/schemas/InspectionOrderSummary" }, "result": { "$ref": "#/components/schemas/QualityResult" }, "observations": { "type": ["string", "null"] }, "inspectedBy": { "$ref": "#/components/schemas/ActorSummary" }, "inspectedAt": { "type": "string", "format": "date-time" }, "correlationId": { "type": "string" } }
+      },
+      "QualityInspectionPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/QualityInspectionResponse" } } } }] },
+      "OrderStatusCounts": {
+        "type": "object", "additionalProperties": false, "required": ["DRAFT", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+        "properties": { "DRAFT": { "type": "integer", "minimum": 0 }, "CONFIRMED": { "type": "integer", "minimum": 0 }, "IN_PROGRESS": { "type": "integer", "minimum": 0 }, "COMPLETED": { "type": "integer", "minimum": 0 }, "CANCELLED": { "type": "integer", "minimum": 0 } }
+      },
+      "QualityResultCounts": { "type": "object", "additionalProperties": false, "required": ["APPROVED", "REJECTED"], "properties": { "APPROVED": { "type": "integer", "minimum": 0 }, "REJECTED": { "type": "integer", "minimum": 0 } } },
+      "AdminDashboardResponse": {
+        "type": "object", "additionalProperties": false, "required": ["role", "activeProducts", "activeMaterials", "ordersByStatus", "materialsOutOfStock", "inspectionsByResult"],
+        "properties": { "role": { "type": "string", "const": "ADMIN" }, "activeProducts": { "type": "integer", "minimum": 0 }, "activeMaterials": { "type": "integer", "minimum": 0 }, "ordersByStatus": { "$ref": "#/components/schemas/OrderStatusCounts" }, "materialsOutOfStock": { "type": "integer", "minimum": 0 }, "inspectionsByResult": { "$ref": "#/components/schemas/QualityResultCounts" } }
+      },
+      "OperatorDashboardResponse": {
+        "type": "object", "additionalProperties": false, "required": ["role", "ordersByStatus", "myRecentOrders", "materialsOutOfStock"],
+        "properties": { "role": { "type": "string", "const": "OPERATOR" }, "ordersByStatus": { "$ref": "#/components/schemas/OrderStatusCounts" }, "myRecentOrders": { "type": "array", "maxItems": 10, "items": { "$ref": "#/components/schemas/ProductionOrderSummaryResponse" } }, "materialsOutOfStock": { "type": "integer", "minimum": 0 } }
+      },
+      "InspectorDashboardResponse": {
+        "type": "object", "additionalProperties": false, "required": ["role", "completedWithoutInspection", "recentInspectionsByResult"],
+        "properties": { "role": { "type": "string", "const": "QUALITY_INSPECTOR" }, "completedWithoutInspection": { "type": "integer", "minimum": 0 }, "recentInspectionsByResult": { "$ref": "#/components/schemas/QualityResultCounts" } }
+      },
+      "DashboardResponse": { "oneOf": [{ "$ref": "#/components/schemas/AdminDashboardResponse" }, { "$ref": "#/components/schemas/OperatorDashboardResponse" }, { "$ref": "#/components/schemas/InspectorDashboardResponse" }], "discriminator": { "propertyName": "role" } },
+      "AuditEventResponse": {
+        "type": "object", "additionalProperties": false, "required": ["id", "actorUserId", "actorUsername", "actorRole", "action", "resourceType", "resourceId", "outcome", "summary", "requestPath", "occurredAt", "correlationId"],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/Id" }, "actorUserId": { "oneOf": [{ "$ref": "#/components/schemas/Id" }, { "type": "null" }] },
+          "actorUsername": { "type": ["string", "null"] }, "actorRole": { "oneOf": [{ "$ref": "#/components/schemas/Role" }, { "type": "null" }] },
+          "action": { "type": "string", "maxLength": 64 }, "resourceType": { "type": "string", "maxLength": 64 }, "resourceId": { "type": ["string", "null"], "maxLength": 64 },
+          "outcome": { "$ref": "#/components/schemas/AuditOutcome" }, "summary": { "type": ["object", "null"], "additionalProperties": true },
+          "requestPath": { "type": ["string", "null"] }, "occurredAt": { "type": "string", "format": "date-time" }, "correlationId": { "type": "string" }
+        }
+      },
+      "AuditEventPage": { "allOf": [{ "$ref": "#/components/schemas/PageBase" }, { "type": "object", "properties": { "content": { "type": "array", "items": { "$ref": "#/components/schemas/AuditEventResponse" } } } }] },
+      "PageBase": {
+        "type": "object", "additionalProperties": false, "required": ["content", "page"],
+        "properties": { "content": { "type": "array", "items": {} }, "page": { "$ref": "#/components/schemas/PageMetadata" } }
+      }
+    }
+  }
+}

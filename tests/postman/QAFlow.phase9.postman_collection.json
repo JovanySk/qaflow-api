@@ -1,0 +1,219 @@
+{
+  "info": {
+    "_postman_id": "824a206f-b0b3-47bc-9403-da88b22eab15",
+    "name": "QAFlow — Fase 9 Products and Materials",
+    "description": "Colección acotada de Fase 9. Usa datos únicos y conserva IDs/versiones. Newman y reportes pertenecen a Fase 16.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Authentication",
+      "item": [
+        {
+          "name": "Login ADMIN",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('ADMIN login returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('Response is JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+              "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Login OPERATOR",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('OPERATOR login returns 200', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('operatorToken', pm.response.json().accessToken);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{operatorUsername}}\",\n  \"password\": \"{{operatorPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Login QUALITY_INSPECTOR",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Inspector login returns 200', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('inspectorToken', pm.response.json().accessToken);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{inspectorUsername}}\",\n  \"password\": \"{{inspectorPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Products",
+      "item": [
+        {
+          "name": "Create product as ADMIN",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('productSku', 'FG-PM-' + Date.now());"] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('Product created', () => pm.response.to.have.status(201));",
+              "pm.test('Location and JSON are present', () => { pm.expect(pm.response.headers.get('Location')).to.be.ok; pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); });",
+              "const body = pm.response.json();",
+              "pm.expect(body.sku).to.eql(pm.collectionVariables.get('productSku'));",
+              "pm.expect(body.version).to.eql('0');",
+              "pm.collectionVariables.set('productId', body.id);",
+              "pm.collectionVariables.set('productVersion', body.version);"
+            ] } }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{productSku}}\",\n  \"name\": \"Postman Finished Product\",\n  \"description\": \"Created by Phase 9 collection\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/products"
+          }
+        },
+        {
+          "name": "Reject duplicate normalized SKU",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Duplicate SKU returns 409', () => pm.response.to.have.status(409));",
+            "pm.expect(pm.response.json().code).to.eql('DUPLICATE_SKU');"
+          ] } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"  {{productSku}}  \",\n  \"name\": \"Duplicate\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/products"
+          }
+        },
+        {
+          "name": "Clear description and deactivate product",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Product updated', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.expect(body.description).to.eql(null);",
+            "pm.expect(body.active).to.eql(false);",
+            "pm.collectionVariables.set('productVersion', body.version);"
+          ] } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"version\": \"{{productVersion}}\",\n  \"description\": null,\n  \"active\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Read product as OPERATOR",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('OPERATOR can read product', () => pm.response.to.have.status(200));",
+            "pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('productId'));"
+          ] } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{operatorToken}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Reject catalog read as QUALITY_INSPECTOR",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Inspector receives 403', () => pm.response.to.have.status(403));",
+            "pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED');"
+          ] } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{inspectorToken}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/products"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Materials",
+      "item": [
+        {
+          "name": "Create material and zero balance as ADMIN",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('materialCode', 'MAT-PM-' + Date.now());"] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('Material created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.expect(body.code).to.eql(pm.collectionVariables.get('materialCode'));",
+              "pm.expect(body.unitOfMeasure).to.eql('KILOGRAM');",
+              "pm.collectionVariables.set('materialId', body.id);",
+              "pm.collectionVariables.set('materialVersion', body.version);"
+            ] } }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{materialCode}}\",\n  \"name\": \"Postman Raw Material\",\n  \"unitOfMeasure\": \"KILOGRAM\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/materials"
+          }
+        },
+        {
+          "name": "Reject duplicate normalized material code",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Duplicate material returns 409', () => pm.response.to.have.status(409));",
+            "pm.expect(pm.response.json().code).to.eql('DUPLICATE_MATERIAL_CODE');"
+          ] } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"  {{materialCode}}  \",\n  \"name\": \"Duplicate\",\n  \"unitOfMeasure\": \"KILOGRAM\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/materials"
+          }
+        },
+        {
+          "name": "Change material unit before history",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Unit changes before history', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.expect(body.unitOfMeasure).to.eql('GRAM');",
+            "pm.collectionVariables.set('materialVersion', body.version);"
+          ] } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"version\": \"{{materialVersion}}\",\n  \"unitOfMeasure\": \"GRAM\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/materials/{{materialId}}"
+          }
+        },
+        {
+          "name": "List material as OPERATOR",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('OPERATOR can list materials', () => pm.response.to.have.status(200));",
+            "pm.expect(pm.response.json().content).to.be.an('array').that.is.not.empty;"
+          ] } }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{operatorToken}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/materials?search={{materialCode}}&unitOfMeasure=GRAM"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "adminToken", "value": "" },
+    { "key": "operatorToken", "value": "" },
+    { "key": "inspectorToken", "value": "" },
+    { "key": "productSku", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "productVersion", "value": "" },
+    { "key": "materialCode", "value": "" },
+    { "key": "materialId", "value": "" },
+    { "key": "materialVersion", "value": "" }
+  ]
+}
